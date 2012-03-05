@@ -4,9 +4,105 @@ require 'mongo'
 require 'graphite'
 require 'peach'
 
-graphite_server = ARGV[0]
+require 'optparse'
+require 'ostruct'
 
-g = Graphite::Logger.new(graphite_server)
+COLLECTORS = %w{graphite statsd none}
+
+class InitOptions
+  def initialize
+    @opts = OptionParser.new do |opts|
+      opts.banner = "Usage: mongodb-graphite {SERVER_NAME[:PORT]} [options]"
+      opts.separator ""
+      opts.separator "Options:"
+      
+      opts.on("-c", "--collector COLLECTOR", COLLECTORS, "Stats collection type. One of #{COLLECTORS.join(', ')}."
+      																					        "Defaults to none. 'None' simply primpts to stdout.") do |collector|
+				@options.collector = collector
+			end
+			
+			opts.on("-h", "--host MONGOS", "Hostname for mongos instance. Defaults to localhost.") do |host|
+				@options.host = host
+			end
+      
+			opts.on("-p", "--port PORT", "Port number for mongos instance. Defaults to 27017.") do |port|
+				@options.port = port
+			end
+      
+      opts.separator ""
+      opts.separator "Metric Path Options:"
+      
+      opts.on("-h", "--host-trim VALUE", "Value to trim from the end of the hostname."
+      																		 "May be specified multiple times.") do |host_trim|
+				@options.host_trim << host_trim
+			end
+      
+      opts.on("--prefix PREFIX", "Prefix to prepend to all metric paths.") do |prefix|
+      	@options.prefix = prefix
+      end
+
+      opts.on("--suffix SUFFIX", "Suffix to append to all metric paths.") do |prefix|
+      	@options.prefix = prefix
+      end
+      
+      opts.on("--[no]reverse-hostname", "Enables/Disables reversing the hostname when creating the"
+      																	"metric path. Defaults to reversing the hostname.") do |reverse|
+				@options.reverse = reverse
+			end
+			
+			opts.on("--exclude-hostname", "Exclude the hostname entirely when creating the metric path.") do |exclude|
+				@options.exclude_hostname = exclude
+			end
+
+      opts.separator ""
+      opts.separator "Common options:"
+
+      # No argument, shows at tail.  This will print an options summary.
+      # Try it and see!
+      opts.on_tail("-h", "--help", "Show this message") do
+        puts opts
+        exit
+      end
+    end
+  end
+
+  def parse(args)
+    @options = OpenStruct.new
+    @options.engine = "none"
+    @options.host = "localhost"
+    @otions.port = "27017"
+    
+    @options.prefix = nil
+    @options.suffix = nil
+    @options.host_trim = []
+    @options.reverse = true
+    @options.exclude_hostname = false
+
+    @opts.parse!(args)
+    @options
+  end
+
+  def help
+    puts @opts
+  end
+end
+
+option_parser = InitOptions.new
+options = option_parser.parse(ARGV)
+
+server_url = ARGV[0]
+
+##############################
+# Check minimum params
+if server_url.nil?
+	option_parser.help()
+  exit
+end
+
+graphite_logger = nil
+if options.collector = "graphite"
+	graphite_logger = Graphite::Logger.new(graphite_server)
+end
 
 to_ignore =[ "set", "repl", "time","qr|qw","ar|aw","conn"]
 to_convert = ["mapped","vsize","res","netIn","netOut"]
@@ -32,12 +128,7 @@ def convert(s)
   s[0..-1].to_f * mul
 end
 
-
-
-
-
 @conn = Mongo::Connection.new
-
 
 @isdbgrid  = {"isdbgrid" => 1}
 if @conn["admin"].command(@isdbgrid)["ok"] == 1
@@ -46,8 +137,7 @@ else
   puts "not mongos => you should not run this if you are not in a cluster"
 end
 
-shards = Array.new
-
+shards = []
 puts @conn["config"]["shards"].find().each { |shard|  shards << shard["host"] }
 
 shards.peach { |s|
