@@ -60,8 +60,8 @@ class InitOptions
         @options.host_suffix = suffix
       end
       
-      opts.on("--[no]reverse-hostname", "Enables/Disables reversing the hostname when creating the",
-      																	"metric path. Defaults to reversing the hostname.") do |reverse|
+      opts.on("--[no-]reverse", "Enables/Disables reversing the hostname when creating the",
+      								 					"metric path. Defaults to reversing the hostname.") do |reverse|
 				@options.reverse = reverse
 			end
 			
