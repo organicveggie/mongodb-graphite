@@ -46,8 +46,18 @@ class InitOptions
       	@options.prefix = prefix
       end
 
-      opts.on("--suffix SUFFIX", "Suffix to append to all metric paths.") do |prefix|
-      	@options.prefix = prefix
+      opts.on("--suffix SUFFIX", "Suffix to append to all metric paths.") do |suffix|
+      	@options.suffix = suffix
+      end
+      
+      opts.on("--host-prefix PREFIX", "Prefix to prepend before the host name in metric paths.",
+                                      "Has no impact if the hostname is excluded.") do |prefix|
+        @options.host_prefix = prefix
+      end
+
+      opts.on("--host-suffix SUFFIX", "Suffix to append after the host name in metric paths.",
+                                      "Has no impact if the hostname is excluded.") do |suffix|
+        @options.host_suffix = suffix
       end
       
       opts.on("--[no]reverse-hostname", "Enables/Disables reversing the hostname when creating the",
@@ -79,6 +89,8 @@ class InitOptions
     
     @options.prefix = ""
     @options.suffix = ""
+    @options.host_prefix = ""
+    @options.host_suffix = ""
     @options.host_trim = []
     @options.reverse = true
     @options.exclude_hostname = false
@@ -179,19 +191,23 @@ shards.each do |s|
     # Prepare the prefix
     prefix = options.prefix
     unless options.exclude_hostname
-      host_prefix = host
+      hostname = host
       options.host_trim.each do |trim|
-        host_prefix = host.sub(/#{trim}$/, "")
+        hostname = host.sub(/#{trim}$/, "")
       end
       
       if options.reverse
-        host_parts = host_prefix.split(".")
+        host_parts = hostname.split(".")
         host_parts.reverse!
-        host_prefix = host_parts.join(".")
+        hostname = host_parts.join(".")
       end
       
+      options.host_prefix += "." unless options.host_prefix == "" || options.host_prefix =~ /[.]$/
+      
       prefix += "." unless prefix == "" || prefix =~ /[.]$/
-      prefix += host_prefix
+      prefix += options.host_prefix unless options.host_prefix.nil? || options.host_prefix.length == 0
+      prefix += hostname
+      prefix += "." + options.host_suffix unless options.host_suffix.nil? || options.host_suffix.length == 0
     end
     
     prefix += "." unless prefix == "" || prefix =~ /[.]$/ 
@@ -246,8 +262,11 @@ shards.each do |s|
     end
                 
     if options.collector == "graphite"
-      #g.log(timestamp, metrics)
+      g.log(timestamp, metrics)
     elsif options.collector == "statds"
+      metrics.keys().each do |metric_key|
+        statsd.gauge(metric_key, metrics[metric_key])
+      end
     else
       metrics.keys.sort.each { |key| puts "#{key}: #{metrics[key]}" }
     end
