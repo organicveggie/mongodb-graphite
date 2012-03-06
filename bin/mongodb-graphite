@@ -140,6 +140,7 @@ end
 shards = []
 @mongos_conn["config"]["shards"].find().each { |shard|  shards << shard["host"] }
 
+# Iterate over shards
 shards.each do |s|
   host,port =  s.split(/,|\//)[1].split(':')
   puts "Processing shard: #{host}"
@@ -175,8 +176,8 @@ shards.each do |s|
       node_conn.close unless node_conn.nil?
     end
     
+    # Prepare the prefix
     prefix = options.prefix
-
     unless options.exclude_hostname
       host_prefix = host
       options.host_trim.each do |trim|
