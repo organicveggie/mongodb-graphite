@@ -149,13 +149,13 @@ unless @mongos_conn["admin"].command(@isdbgrid)["ok"] == 1
 end
 
 # Retrieve shard data
-shards = []
-@mongos_conn["config"]["shards"].find().each { |shard|  shards << shard["host"] }
+shards = {}
+@mongos_conn["config"]["shards"].find().each { |shard|  shards[shard["_id"]] = shard["host"] }
 
 # Iterate over shards
-shards.each do |s|
-  host,port =  s.split(/,|\//)[1].split(':')
-  puts "Processing shard: #{host}"
+shards.keys.peach do |shard_name|
+  puts "Processing shard: #{shard_name}"
+  host,port =  shards[shard_name].split(/,|\//)[1].split(':')
 
   shard_nodes = []
   shard_host = nil
@@ -164,15 +164,15 @@ shards.each do |s|
     shard_host = Mongo::Connection.new(host, port)
     
     # Retrieve list of servers excluding arbiters
-    shard_host["admin"].command({ "isMaster" => 1 } )["hosts"].each { |node| shard_nodes << node }
+    shard_nodes = shard_host["admin"].command({ "isMaster" => 1 } )["hosts"]
   ensure
     shard_host.close unless shard_host.nil?
   end
     
   # Iterate over nodes and retrieve server status
-  shard_nodes.each do |shard_node|
+  shard_nodes.peach do |shard_node|
     node_host, node_port = shard_node.split(':')
-    puts "#{host}: retrieving stats"
+    puts "#{shard_name}/#{node_host}: retrieving stats"
 
     timestamp =  Time.now.getutc.to_i
     
@@ -184,6 +184,9 @@ shards.each do |s|
       node_conn = Mongo::Connection.new(node_host, node_port)
       stats = node_conn["admin"].command({"serverStatus" => 1})
       is_master = node_conn["admin"].command({"isMaster" => 1})["ismaster"]
+    rescue
+      puts "Unable to connect to #{shard_name}/#{node_host}"
+      next
     ensure
       node_conn.close unless node_conn.nil?
     end
@@ -212,6 +215,7 @@ shards.each do |s|
     
     prefix += "." unless prefix == "" || prefix =~ /[.]$/ 
 
+    # Collect all of the metrics
     metrics = {}
     %w{bits resident virtual mapped mappedWithJournal}.each do |mem|
       metrics[prefix + "mem.#{mem}"] = stats["mem"][mem]
@@ -260,7 +264,8 @@ shards.each do |s|
     %w{dt prepLogBuffer writeToJournal writeToDataFiles remapPrivateView}.each do |dur|
       metrics[prefix + "dur.timeMs.#{dur}"] = stats["dur"]["timeMs"][dur]
     end
-                
+       
+    # Dump the metrics to the appropriate collector         
     if options.collector == "graphite"
       g.log(timestamp, metrics)
     elsif options.collector == "statds"
