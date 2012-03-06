@@ -33,9 +33,11 @@ A Ruby client to retrieve statistics from a MongoDB cluster and push them to eit
 
 == Metric Paths
 
-By default, mongodb-graphite takes the hostname, reverses it and appends the name of the metric from MongoDB. For example, the the default metric path for <em>opcounters.command</em> from <em>mongo1.example.com</com> looks like the following:
+By default, mongodb-graphite takes the hostname, reverses it and appends the name of the metric from MongoDB. For example, the the default metric path for <em>opcounters.command</em> from <em>mongo1.example.com</em> looks like the following:
 
   com.example.mongo1.opcounters.command
+
+=== Hostname
 
 If you want to remove the domain portion of the hostname, you can use the <tt>--host-trim</tt> option:
 
@@ -45,6 +47,25 @@ Produces:
 
   mongo1.opcounters.command
   
+You can specify <tt>--host-trim</tt> multiple times if you have multiple paths you want to remove. All <tt>--host-trim</tt> options will be applied in the order in which they are specified. 
+
+Use the <tt>--no-reverse</tt> option to prevent mongodb-graphite from reversing the hostname when creating the metric path:
+
+  $ ./mongodb-graphite --no-reverse
+  mongo1.example.com.opcounters.command
+
+You can also exclude the hostname entirely by using the <tt>--exclude-hostname</tt>:
+
+  $ ./mongodb-graphite --exclude-hostname
+  opcounters.command
+  
+  $ ./mongodb-graphite --prefix mongo --exclude-hostname
+  mongo.opcounters.command
+
+Note that the <tt>--host-prefix</tt> and <tt>--host-suffix</td> options will be ignored if <tt>--exclude-hostname</tt> is specified.
+
+=== Prefixes/Suffixes
+
 You can add arbitrary prefixes and suffixes using the <tt>--prefix</tt> and <tt>--suffix</tt>. Prefixes are added before anything else in the metric path. Suffixes are added after anything else in the metric path:
 
   $ ./mongodb-graphite --prefix foo
@@ -74,24 +95,9 @@ You can add arbitrary prefixes and suffixes around the hostname itself using the
   prod.mongo.com.example.mongo1.mongodb.opcounters.command
   prod.mongo.com.example.mongo2.mongodb.opcounters.command
 
-Use the <tt>--no-reverse</tt> option to prevent mongodb-graphite from reversing the hostname when creating the metric path:
-
-  $ ./mongodb-graphite --no-reverse
-  mongo1.example.com.opcounters.command
-
-You can also exclude the hostname entirely by using the <tt>--exclude-hostname</tt>:
-
-  $ ./mongodb-graphite --exclude-hostname
-  opcounters.command
-  
-  $ ./mongodb-graphite --prefix mongo --exclude-hostname
-  mongo.opcounters.command
-
-Note that the <tt>--host-prefix</tt> and <tt>--host-suffix</td> options will be ignored if <tt>--exclude-hostname</tt> is specified.
-
 = Links
 
 * http://www.mongodb.org
-* http://graphite.wikidot.com/
+* http://graphite.wikidot.com
 * https://github.com/etsy/statsd
 * https://github.com/github/statsd-ruby
