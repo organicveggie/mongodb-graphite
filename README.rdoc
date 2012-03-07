@@ -16,7 +16,7 @@ A Ruby client to retrieve statistics from a MongoDB cluster and push them to eit
      -p, --port PORT                  Port number for mongos instance. Defaults to 27017.
  
  Metric Path Options:
-     -h, --host-trim VALUE            Value to trim from the end of the hostname.
+         --host-trim VALUE            Value to trim from the end of the hostname.
                                       May be specified multiple times.
          --prefix PREFIX              Prefix to prepend to all metric paths.
          --suffix SUFFIX              Suffix to append to all metric paths.
