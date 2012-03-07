@@ -37,7 +37,7 @@ class InitOptions
       opts.separator ""
       opts.separator "Metric Path Options:"
       
-      opts.on("-h", "--host-trim VALUE", "Value to trim from the end of the hostname.",
+      opts.on("--host-trim VALUE", "Value to trim from the end of the hostname.",
       																		 "May be specified multiple times.") do |host_trim|
 				@options.host_trim << host_trim
 			end
