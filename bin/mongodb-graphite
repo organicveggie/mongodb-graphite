@@ -268,7 +268,7 @@ shards.keys.peach do |shard_name|
     # Dump the metrics to the appropriate collector         
     if options.collector == "graphite"
       g.log(timestamp, metrics)
-    elsif options.collector == "statds"
+    elsif options.collector == "statsd"
       metrics.keys().each do |metric_key|
         statsd.gauge(metric_key, metrics[metric_key])
       end
